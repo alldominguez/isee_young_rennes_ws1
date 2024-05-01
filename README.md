@@ -1,3 +1,6 @@
+
+![bandeau_site_blanc_petit_1](https://github.com/alldominguez/isee_young_rennes_ws1/assets/81332368/64b87ada-dcbe-4ae7-8d9b-c465f845ae86)
+
 # ISEE Young Rennes 2024: Statistical methods for studying mixtures and the exposome 
 
 - Charline Warembourg (charline.warembourg@inserm.fr)
