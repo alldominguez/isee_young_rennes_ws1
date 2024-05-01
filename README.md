@@ -23,4 +23,8 @@ specific context, and discussing the pros and cons of each method in relation to
 
 The workshop will consist... 
 
+## Repository guide
+
+In this repository, you will find the code and materials used during the **Workshop 1: Statistical methods for studying mixtures and the exposome**. To help you navigate the repository, its organization is described below.
+
 
