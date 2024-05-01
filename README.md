@@ -1,9 +1,9 @@
 # ISEE Young Rennes 2024: Statistical methods for studying mixtures and the exposome 
 
-Charline Warembourg (charline.warembourg@inserm.fr)
-Maximiliem Rennard (maximilien.genard-walton@inserm.fr)
-Augusto Anguita (augusto.anguita@isglobal.org)
-Alan Domínguez (alan.dominguez@isglobal.org)
+- Charline Warembourg (charline.warembourg@inserm.fr)
+- Maximiliem Rennard (maximilien.genard-walton@inserm.fr)
+- Augusto Anguita (augusto.anguita@isglobal.org)
+- Alan Domínguez (alan.dominguez@isglobal.org)
 
 ## Introduction
 The study of mixtures and the exposome in the context of environmental epidemiological research is rapidly
