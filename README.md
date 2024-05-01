@@ -18,3 +18,9 @@ multicollinearity).
 
 This workshop therefore aims at summarizing and presenting the main models used in this
 specific context, and discussing the pros and cons of each method in relation to a specific study objectives.
+
+## Notes for attendees
+
+The workshop will consist... 
+
+
