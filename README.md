@@ -4,7 +4,7 @@
 # ISEE Young Rennes 2024: Statistical methods for studying mixtures and the exposome 
 
 - Charline Warembourg (charline.warembourg@inserm.fr)
-- Maximilien Genard (maximilien.genard-walton@inserm.fr)
+- Maximilien Genard-Walton (maximilien.genard-walton@inserm.fr)
 - Augusto Anguita (augusto.anguita@isglobal.org)
 - Alan Domínguez (alan.dominguez@isglobal.org)
 
