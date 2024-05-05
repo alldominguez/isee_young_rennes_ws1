@@ -23,11 +23,28 @@ specific context, and discussing the pros and cons of each method in relation to
 
 The workshop will consist... 
 
+For this practical session, we will use data from the HELIX exposome study. The HELIX study is a collaborative project involving six longitudinal birth cohort studies, based on population data from six European countries (France, Greece, Lithuania, Norway, Spain, and the United Kingdom).
+<img src="figures/HELIX.png" alt="HELIX logo" width="500"/> 
+
 ## Repository guide
 
 In this repository, you will find the code and materials used during the **Workshop 1: Statistical methods for studying mixtures and the exposome**. To help you navigate the repository, its organization is described below.
 
 The repository contains the following documents:
+
+1.- **ws1_isee_young_rennes.ipynb:** Contains the notebook for the practical session with the necessary code for data analysis in exposome projects.
+
+2.- **data:** This folder contains the codebook and the datasets that will be used during the session.
+
+The **exposome data (n = 1301)** we will use is contained in an **Rdata** file, which includes the following files:
+  1. `phenotype` (outcpmes).
+  2. `exposome` (exposures).
+  3. `covariates` (covariates).
+  4. `codebook`
+
+The description of each variable (name, structure, variable type, transformation, etc.) is detailed in the codebook.
+
+**Note:** To merge the databases, it's necessary to use the key variable ID.
 
 
 
