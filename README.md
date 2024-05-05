@@ -36,7 +36,7 @@ In this repository, you will find the code and materials used during the **Works
 
 The repository contains the following documents:
 
-1.- **ws1_isee_young_rennes.ipynb:** Contains the notebook for the practical session with the necessary code for data analysis in exposome projects.
+1.- **ws1_isee_young_rennes.ipynb:** Contains the notebook for the practical session with the necessary code to apply statistical methods for studying mixtures and the exposome.
 
 2.- **data:** This folder contains the codebook and the datasets that will be used during the session.
 
