@@ -48,7 +48,7 @@ The **exposome data (n = 1301)** we will use is contained in an **Rdata** file, 
 
 The description of each variable (name, structure, variable type, transformation, etc.) is detailed in the codebook.
 
-**Note:** To merge the databases, it's necessary to use the key variable ID.
+
 
 
 
