@@ -27,7 +27,6 @@ For this practical session, we will use data from the HELIX exposome study. The 
 
 <img src="figures/HELIX.png" alt="HELIX logo" width="500"/> 
 
-
 **Note:** The data provided in this introductory course was simulated from the HELIX subcohort data. Details of the HELIX project and the source of the collected data can be found in the following publication: [BMJ Open - HELIX](https://bmjopen.bmj.com/content/8/9/e021311) and on the [project website](https://www.projecthelix.eu/es).
 
 
