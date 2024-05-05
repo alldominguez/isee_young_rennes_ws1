@@ -24,7 +24,12 @@ specific context, and discussing the pros and cons of each method in relation to
 The workshop will consist... 
 
 For this practical session, we will use data from the HELIX exposome study. The HELIX study is a collaborative project involving six longitudinal birth cohort studies, based on population data from six European countries (France, Greece, Lithuania, Norway, Spain, and the United Kingdom).
+
 <img src="figures/HELIX.png" alt="HELIX logo" width="500"/> 
+
+
+**Note:** The data provided in this introductory course was simulated from the HELIX subcohort data. Details of the HELIX project and the source of the collected data can be found in the following publication: [BMJ Open - HELIX](https://bmjopen.bmj.com/content/8/9/e021311) and on the [project website](https://www.projecthelix.eu/es).
+
 
 ## Repository guide
 
