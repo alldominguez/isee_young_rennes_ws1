@@ -21,8 +21,20 @@ specific context, and discussing the pros and cons of each method in relation to
 
 ## Notes for attendees
 
-The workshop will consist... 
+The workshop will be split into two parts
 
+- **Theory (1h30):** During the first part, we will present.
+
+  1. Aims and statisticals challenges/specificities of mixture and exposome analyses.
+  2. A range of (non-exahustive) statistical models specific to mixture and/or the exposome with an example application for each method, that will cover: **exposome-wide association** study model (ExWAS), **mixture models** (e.g BKMR, WQS, and their externsions, etc), **variable selection methods** (e.g. DSA, ENET, (s)PLS, etc), and **dimension reduction/clustering** tools (e.g. PCA, HCPC).
+  3. Pros and cons of using each method.
+  4. Comparative performances of these methods.
+  5. The data pre-processing steps required to perform these analysis.
+  6. The R packages avaiable to implement these methods. 
+   
+- **Practice (1h):** We will give a dataset to participants along with codes for running methods presented in the theoretical parts. Each participant will then be able to apply one (or more) of the methods to answer one of the possible research questions in relation to the dataset. Workshop organizers will roam around the rooom to assist participants if needed. 
+
+## Data
 For this practical session, we will use data from the HELIX exposome study. The HELIX study is a collaborative project involving six longitudinal birth cohort studies, based on population data from six European countries (France, Greece, Lithuania, Norway, Spain, and the United Kingdom).
 
 <img src="figures/HELIX.png" alt="HELIX logo" width="500"/> 
