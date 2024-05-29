@@ -60,6 +60,13 @@ The **exposome data (n = 1301)** we will use is contained in an **Rdata** file, 
 
 The description of each variable (name, structure, variable type, transformation, etc.) is detailed in the codebook.
 
+Additionaly, we will give you the option to use `R` and `Rstudio`. Here, we will use `quarto` to render and generate an `html`, which you can open directly in your browser. 
+
+
+
+
+Enjoy the session and rest of the conference! 
+
 
 
 
