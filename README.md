@@ -46,7 +46,7 @@ For this practical session, we will use data from the HELIX exposome study. The 
 
 ## Repository guide
 
-### - Option 1
+### * Option 1
 
 In this repository, you will find the code and materials used during the **Workshop 1: Statistical methods for studying mixtures and the exposome**. To help you navigate the repository, its organization is described below.
 
@@ -65,7 +65,7 @@ The **exposome data (n = 1301)** we will use is contained in an **Rdata** file, 
 The description of each variable (name, structure, variable type, transformation, etc.) is detailed in the codebook.
 
 
-### - Option 2 
+### * Option 2 
 
 Additionaly, we will give you the option to use `R` and `Rstudio` without any notebook. Here, we will use `quarto` to render and generate an `html`, which you can open directly in your browser. All the packages need it to run the analysis are in the `install_packages.R` file available in the repository. 
 
