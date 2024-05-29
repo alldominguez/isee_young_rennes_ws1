@@ -19,7 +19,7 @@ multicollinearity).
 This workshop therefore aims at summarizing and presenting the main models used in this
 specific context, and discussing the pros and cons of each method in relation to a specific study objectives.
 
-We would like to acknowledge Xavier Basagaña for his contribution to the workshop and initial materials to run this session. 
+We would like to acknowledge [Xavier Basagaña](https://www.isglobal.org/en/our-team/-/profiles/18513) for his contribution to the workshop and initial materials to run this session. 
 
 ## Notes for attendees
 
