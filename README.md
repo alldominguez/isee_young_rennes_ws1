@@ -57,7 +57,7 @@ The repository contains the following documents:
 2.- **data:** This folder contains the codebook and the datasets that will be used during the session.
 
 The **exposome data (n = 1301)** we will use is contained in an **Rdata** file, which includes the following files:
-  1. `phenotype` (outcpmes).
+  1. `phenotype` (outcomes).
   2. `exposome` (exposures).
   3. `covariates` (covariates).
   4. `codebook`
