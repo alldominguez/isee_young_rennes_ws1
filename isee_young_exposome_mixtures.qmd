@@ -1,0 +1,644 @@
+---
+title: "ISEE young - Workshop 1. Statistical methods for studying mixtures and the exposome"
+subtitle: ""
+author: "Charline Warembourg, Maximilien Genard-Walton, Alan Domínguez, Augusto Anguita"
+format: html
+date: "May 28 2024"
+---
+
+<img src="https://github.com/alldominguez/isee_young_rennes_ws1/blob/main/figures/logo_isse_young_rennes.PNG?raw=1" alt="ISGlobal logo" width="900"/>
+
+The study of mixtures and the exposome in the context of environmental epidemiological research is rapidly growing. Investigating mixtures and the exposome allows researchers to assess the independent and combined effects of various exposures, as well as their potential synergistic or antagonistic effects, on health outcomes. However, the complexity of exploring these questions requires the use of specific statistical models to account for aspects that single-exposure models cannot typically handle (e.g. multicollinearity).
+
+This workshop therefore aims at summarizing and presenting the main models used for studying mixtures and the exposome, and discussing the pros and cons of each method in relation to a specific study objectives.
+
+To install the packaged required for the practical session please follow the steps below:
+
+```{r}
+#| output: false
+pacman::p_load(Biobase, mice, MultiDataSet, lsr, FactoMiner,
+               stingr, circlize, reshape2, pryr, scales, imputeLCMD,
+               scatterplot3d, glmnet, gridExtra, grid, Hmisc, gplot,
+               gtools, S4Vectors, tidyverse, corrplot, RColorBrewer,
+               skimr, bkmr, gWQS, ggridges, MASS, caret, partDSA)
+```
+
+For this hands-on session we will use data from the HELIX exposome study. The HELIX study is a collaborative project between six population-based longitudinal birth cohort studies from six European countries (France, Greece, Lithuania, Norway, Spain and the United Kingdom).
+
+<img src="https://github.com/alldominguez/isee_young_rennes_ws1/blob/main/figures/HELIX.png?raw=1" alt="HELIX logo" width="600"/>
+
+**Note:** The data provided in this introductory course were simulated using data from the HELIX subcohort. Details of the HELIX project and the origin of the data collected can be consulted in the following publication: https://bmjopen.bmj.com/content/8/9/e021311 and website: https://www.projecthelix.eu/es.
+
+-   The **exposome data (n = 1301)** that we will use is contained in an Rdata file, the file contains the following files:
+
+1.  `phenotype` (outcomes)
+2.  `exposome`
+3.  `covariates` (covariates)
+
+The `exposome` database contains more than **200 exposures**. <img src="https://github.com/alldominguez/isee_young_rennes_ws1/blob/main/figures/HELIX_exposures.png?raw=1" alt="HELIX exposures" width="700"/>
+
+The description of each variable (name, structure, variable type, transformation, ...) is detailed in the [codebook](https://github.com/alldominguez/isee_young_rennes/blob/main/data/codebook.csv).
+
+-   This RData file contains (phenotype, exposure, covariates and codebook)
+
+```{r }
+load(url("https://raw.githubusercontent.com/alldominguez/isee_young_rennes_ws1/main/data/exposome.RData"))
+```
+
+We will check the different options
+
+```{r}
+dplyr::glimpse(phenotype) 
+dplyr::glimpse(exposome) 
+dplyr::glimpse(covariates)
+dplyr::glimpse(codebook)
+```
+
+We are going to use the `rexposome::loadExposome` function to create a single dataset (`ExposomeSet`) through the `data.frames` that we initially loaded. First we will organize the data in the appropriate format for our analysis.
+
+```{r}
+# Time windows of exposure availables for the analysis
+levels(codebook$period)
+```
+
+```{r}
+# Exposure families availables for the analysis
+levels(codebook$family)
+```
+
+-   Processing data for the Exposome analysis
+
+```{r}
+expo.list <- as.character(codebook$variable_name[(codebook$family == "Organochlorines" |
+                                                  codebook$family == "Metals") &
+                                                  codebook$period == "Postnatal"]) # we can also select "Pregnancy" period
+expo.list
+```
+
+We can exclude unnecessary information
+
+```{r}
+expo.list <- expo.list[-which(expo.list == "hs_tl_cdich_None")]
+expo.list <- expo.list[-which(expo.list == "hs_sumPCBs5_cadj_Log2")]
+```
+
+Select specific columns (variables) from the families that we selected in the previous step and add the identifier per subject (ID)
+
+```{r}
+expo2 <- exposome[ ,c("ID", expo.list)]
+```
+
+Now we scale the continuous variables
+
+```{r}
+index.cont <- c(3:9,11:ncol(expo2))
+for (i in index.cont) {
+  expo2[,i] <- expo2[,i]/IQR(expo2[,i],na.rm=T)
+}
+```
+
+```{r}
+codebook[expo.list,]$labels
+```
+
+-   We combine data from the `phenotype` and `covariates` files
+
+```{r}
+dat <- cbind(hs_zbmi_who = phenotype[ ,4],  # we select the 4th column of the phenotype dataframe and call it hs_zbmi_who
+             covariates[ ,2:13])  # we select from columns 2 to 13 of the covariates dataframe
+
+data <- data.frame(expo2, dat)
+```
+
+```{r}
+dplyr::glimpse(data)
+```
+
+Now we will create our `ExposomeSet` object by combining our three files that we worked on in the previous lines. We need to create this specific object to use some of the functionalities of the `rexposome` package.
+
+This dataset is composed of:
+
+-   **3 families of exposures** (built environment, metals, organochlorines), there are **32 exposures in total**. (continuous variables)
+-   **1 outcome** (z-score for BMI) (continuous variable)
+-   **1 exposure window** (postnatal period)
+
+```{r}
+exp <- rexposome::loadExposome(exposures = expo2[expo.list],
+                               description = codebook[expo.list,],
+                               phenotype = dat,
+                               description.famCol = "family")
+```
+
+We will also create a dataset (containing the same data) but joining the `phenotype`, `exposome`, `covariates` files. This dataframe will be more easy to handle it outside the functionalities of `rexposome` package.
+
+```{r}
+exp_all <- phenotype %>%
+           dplyr::inner_join(exposome, by = "ID") %>%
+           dplyr::inner_join(covariates, by = "ID")
+```
+
+```{r}
+dplyr::glimpse(exp_all)
+```
+
+## **Exposome descriptive analysis**
+
+<img src="https://github.com/alldominguez/isee_young_rennes_ws1/blob/main/figures/Exposome.jpg?raw=1" alt="ISGlobal logo" width="500"/>
+
+The exposome, described as 'the totality of human environmental exposures from conception onwards,'acknowledges that individuals are simultaneously exposed to multiple different environmental factors, adopting a holistic approach to discovering etiological factors of disease. The main advantage of the exposome approach over more traditional 'one exposure, one disease or health outcome' models is that it provides a framework for studying multiple environmental risks (urban, chemical, lifestyle, social, etc.) and their combined effects.
+
+-   Firstly, we will check the **levels** of some pollutants of interest **(Organoclorines, air pollutants, metals)**
+
+```{r}
+# Organoclorines levels per cohort
+rexposome::plotFamily(exp,
+                      family = "Organochlorines",
+                      group = "h_cohort") +
+                      xlab('Organochlorines') +
+                      ylab('Concentration')
+```
+
+```{r}
+# Metals levels per sex
+rexposome::plotFamily(exp,
+                      family = "Metals",
+                      group = "h_cohort") +
+                      xlab('Metals') +
+                      ylab('Concentration')
+```
+
+-   Secondly, we will check the correlation between families **(Organochlorines, air pollution, metals)**
+
+```{r}
+#| output: false
+exp_cor <- rexposome::correlation(exp, use = "pairwise.complete.obs", method.cor = "spearman")
+exp_cor
+```
+
+```{r}
+rexposome::plotCorrelation(exp_cor, type = "matrix")
+```
+
+### **Exposome association analysis and variable selection methods** <a name="association"></a>
+
+Once the exposome variables that we want to study have been explored and described, we can look at the association between some health outcome and the different exposures using different approaches such as those mentioned in the theoretical part.
+
+-   **Exposome-Wide association analysis (ExWAS)**
+
+The ExWAS method is an approach that allows us to deal with high-dimensionality data. This method tests the association of each of the exposures with the health outcome of interest, adjusting for confounding variables (but not for co-exposures), additionally allowing us to control for multiple testing. This method can be applied through the `rexposome::exwas` function.
+
+```{r}
+exwas <- rexposome::exwas(exp, formula = hs_zbmi_who ~ h_cohort + e3_sex_None + e3_yearbir_None, family = "gaussian")
+exwas
+```
+
+We obtain the threshold for the effective number of testing (multiple testing): corrected p-value.
+
+```{r}
+rexposome::tef(exwas)
+```
+
+```{r}
+exwas_result <- round(as.data.frame(rexposome::extract(exwas)),6)
+```
+
+```{r}
+exwas_result
+```
+
+Using the `rexposome::plotExwas` function we can visualize the exwas results using a Manhattan plot. This type of graph is particularly useful since it allows us to visualize the statistical association through the p-value grouped by the different exposure families. It is important to mention that the Manhattan plot only shows us the p-values, but no metric of the effect of the exposure.
+
+```{r}
+clr <- rainbow(length(rexposome::familyNames(exp)))
+names(clr) <- rexposome::familyNames(exp)
+
+rexposome::plotExwas(exwas, color = clr, show.effective = TRUE,
+          exp.order=expo.list) +
+  ggtitle("Exposome-Wide Association para BMI")
+```
+
+-   **Question 1:** <font color='green'> **Is ExWas analysis controlled by multiple testing?** </font>
+-   **Question 2:** <font color='green'> **If any participant is exposed to PCB153, can we say that if they are also exposed to PCB118 their BMI will be reduced?** </font>
+
+```{r}
+rexposome::plotEffect(exwas) + ggtitle("Exposome and BMI")
+```
+
+```{r}
+rexposome::plotVolcano(exwas)
+```
+
+-   **Stepwise selection**
+
+This technique uses a sequence of steps to allow predictor variables to enter or exit a regression model one by one (generates multiple models). Often this procedure converges on a subset of variables. The entry and exit criteria are based on the significance of the p-value. The importance of features is ranked according to their individual ability to explain variation in the outcome.
+
+```{r}
+set.seed(234) #definimos una semilla
+full.model <- lm(hs_zbmi_who ~ h_cohort + e3_sex_None + e3_yearbir_None +
+                   hs_as_c_Log2 +
+                   hs_cd_c_Log2 + hs_co_c_Log2 + hs_cs_c_Log2 +
+                   hs_cu_c_Log2 + hs_hg_c_Log2 + hs_mn_c_Log2 +
+                   hs_mo_c_Log2 + hs_pb_c_Log2 + hs_dde_cadj_Log2 +
+                   hs_ddt_cadj_Log2 + hs_hcb_cadj_Log2+
+                   hs_pcb118_cadj_Log2 + hs_pcb138_cadj_Log2+
+                   hs_pcb153_cadj_Log2 + hs_pcb170_cadj_Log2 +
+                   hs_pcb180_cadj_Log2,
+                 data = data)
+```
+
+```{r}
+step.model <- stepAIC(full.model, direction = "both",
+                      trace = FALSE,
+                      scope = list(lower = ~ h_cohort + e3_sex_None + e3_yearbir_None))
+```
+
+```{r}
+summary(step.model)
+```
+
+-   **Elastic net**
+
+This technique is based on the combination of the LASSO and Ridge penalties, with the aim of overcoming some of their limitations. Because in the presence of correlated variables LASSO tends to select one variable from a group and ignore the rest and Ridge selects some variables with similar magnitudes, a good compromise is achieved by using Elastic net. The penalty parameters are optimized through the cross-validation procedure (which can generate problems of instability in the results).
+
+```{r}
+x <- model.matrix(hs_zbmi_who ~ h_cohort + e3_sex_None + e3_yearbir_None +
+                     hs_as_c_Log2 +
+                    hs_cd_c_Log2 + hs_co_c_Log2 + hs_cs_c_Log2 +
+                    hs_cu_c_Log2 + hs_hg_c_Log2 + hs_mn_c_Log2 +
+                    hs_mo_c_Log2 + hs_pb_c_Log2 + hs_dde_cadj_Log2 +
+                    hs_ddt_cadj_Log2 + hs_hcb_cadj_Log2+
+                    hs_pcb118_cadj_Log2 + hs_pcb138_cadj_Log2+
+                    hs_pcb153_cadj_Log2 + hs_pcb170_cadj_Log2 +
+                    hs_pcb180_cadj_Log2, data)[,-1]
+```
+
+```{r}
+pen.fac <- c(rep(0,12),rep(1,ncol(x)-12))
+```
+
+```{r}
+set.seed(123)
+model <- caret::train(x=x, y=data$hs_zbmi_who,
+  method = "glmnet",
+  trControl = caret::trainControl("cv", number = 10),
+  tuneLength = 10, penalty.factor=pen.fac
+)
+
+```
+
+```{r}
+# Best tuning parameter
+model$bestTune
+
+# Coefficient of the final model. You need
+# to specify the best lambda
+coef(model$finalModel, model$bestTune$lambda)
+```
+
+Variables that have a **dot (.)** instead of a coefficient have been excluded by the method; These coefficients have been reduced to zero and are not part of the final model. This indicates that, according to the model, they do not provide information that significantly improves the prediction capacity of the model given the current regularization parameters and the information contained in the other variables.
+
+-   **Deletion Substitution Addition (DSA)** It is a technique based on multiple iterations through the use of cross-validation, where a variable is removed, replaced or added to the model. Like the previous technique, it is subject to unstable results.
+
+```{r}
+pacman::p_load(partDSA)
+```
+
+```{r}
+control <- partDSA::DSA.control(vfold=3)
+```
+
+```{r}
+model_dsa <- partDSA::partDSA(x, data$hs_zbmi_who, control = control)
+```
+
+```{r}
+summary(model_dsa)
+```
+
+```{r}
+model_dsa$var.importance # we se that some variables appears in different partions of the
+```
+
+## **Mixture analysis**
+
+The main idea in mixture analysis is that low levels of exposure to a given contaminant may produce no health effects (or effects that are too small to be detected), but combined exposure to multiple contaminants can generate an effect.
+
+<img src="https://github.com/alldominguez/isee_young_rennes_ws1/blob/main/figures/PRIME.png?raw=1" alt="ISGlobal logo" width="500"/>
+
+Common approaches used in environmental epidemiology ("one-at-the-time") fail to capture the complexity when evaluating the combined effect of multiple exposures.Therefore, other methods are needed to investigate the health effects of mixtures or multiple exposures. In recent years, various methods have been proposed to estimate the independent and joint effects of multiple exposures.
+
+The selection of the **correct method** in **mixture analysis** should be guided by the **research question we want to answer**.
+
+-   <font color='purple'> **Overall effect estimation:** <font color='black'> What is the overall effect of the mixture and what is the magnitude of association?.
+-   <font color='orange'> **Toxic agent identification:** <font color='black'> Which pollutants are associated with the outcome? What pollutants are most important?.
+-   <font color='green'> **Pattern identification:** <font color='black'> Are there specific exposure patterns in the data?.
+-   <font color='red'> **A priori defined groups:** <font color='black'> What are the associations between an outcome and a priori defined groups of exposures?.
+-   <font color='blue'> **Interactions & Non-linearities:** <font color='black'> Are there interactions between exposures? Is the exposure-response surface non-linear?.
+
+For a comprehensive review ["Powering Research through Innovative Methods for Mixtures in Epidemiology (PRIME) Program: Novel and Expanded Statistical Methods"](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8835015/)
+
+We will install the necessary packages to run a mixture analysis
+
+```{r}
+#| output: false
+pacman::p_load(gWQS, qgcomp, bkmr)
+```
+
+To facilitate the interpretation of the results we only going to use one family for the mixture analysis. We create a subset only for organochlorines during the postnatal period.
+
+```{r }
+expo.list <- as.character(codebook$variable_name[(codebook$family == "Organochlorines" |
+                                                  codebook$family == "Metals") &
+                                                  codebook$period == "Postnatal"])
+
+expo.list <- expo.list[-which(expo.list == "hs_tl_cdich_None")] #since it is a factor
+expo.list <- expo.list[-which(expo.list == "hs_sumPCBs5_cadj_Log2")] #since it is a sum of PCBs already
+expo2 <- exposome[ ,c("ID", expo.list)]
+
+
+dat <- cbind(hs_zbmi_who = phenotype[ ,4],  # we select the fourth column of the phenotype dataframe and name it hs_zbmi_who
+             covariates[ ,2:13])  # we select columns 2 through 13 of the covariates dataframe
+
+# we combine the data
+data <- data.frame(expo2, dat)
+str(data)
+
+```
+
+-   **Weighted Quantile Sum Regression (WQS)**
+
+This method operates in a supervised learning framework, creating a single score (the weighted quantile sum) that summarizes the overall exposure to the mixture and including this score in a regression model. It aims to evaluate the overall effect of the mixture on the outcome of interest. The score is calculated as a weighted sum (so that exposures with weaker effects on the outcome have less weight in the index) of all exposures categorized into quartiles, or more groups, so that extreme values have less impact on the outcome (weight estimation).
+
+To estimate the model, the data is split in a training and validation dataset: the training set is used for the weights estimation, the second one to test for the significance of the final WQS index. The weights are estimated through a bootstrap sample (a dataset is created using sampling replacement from the training dataset and the parameters are estimated using an optimization algorithm).
+
+After the weights are estimated in the training dataset this are used to construct the WQS index in the validation set, which are used to test for the association between the mixture and the health outcome.
+
+The coefficient that summarize the overall effect to the (weighted) mixture will be `wqs`
+
+```{r}
+mod_wqs <- gwqs(hs_zbmi_who ~ wqs + h_cohort + e3_sex_None + e3_yearbir_None, 
+                mix_name = expo.list, 
+                q = 10, # wqs will be estimted from ranking exposure concentration in deciles
+                validation = 0.6, # 0.40 will be used for training
+                b = 100, # 100 bootsrap samples
+                b1_pos = FALSE, # negative weights 
+                b_constr = FALSE, # contraints in the optimization function for weight est.
+                family = "gaussian", 
+                seed = 2016,
+                data = data)
+```
+
+After we run the model, we can test the significance of the mixture coefficient to see if there is an association between the WQS index and the outcome (BMI)
+
+```{r}
+summary(mod_wqs)
+```
+
+In, addition we can also provide an estimate of the individual weights that indicate the relative importance of each exposure in the mixture-outcome associations. This is done by using the following syntax.
+
+```{r}
+gwqs_barplot(mod_wqs)
+```
+
+Additionally, we can have a representation of the `wqs` index and the outcome (adjusted model residual when covariates are included in the model). This shows the direction and the shape of the association between the mixture defined previously and BMI. 
+
+```{r}
+gwqs_scatterplot(mod_wqs)
+```
+
+Participants in the top deciles of the selected exposures are those associated with lower BMI.
+
+WQS regression works under the assumption of uni-directionallity (positive or negative) of all exposure with respect to the explored outcome. Under this assumption we seek no to incur in the reversal paradox (under highly correlated exposures) improving the identification of harmful pollutants.
+
+**Question:** <font color='green'> **Does the model take into consideration possible interactions?** </font>
+
+The WQS regression have several extensions that helps to relaxed some of the assumptions and address some of their limitations. Extensions of the WQS regression are: (i) Repeated holdout validation for WQS, (ii) Penalized weights, (iii) BWQS, (iv) lagged WQS (time-varying mixtures of exposures).
+
+-   **Quantile G-computation**
+
+This method was introduced to overcome some of the limitations in the directionallity assumption from the WQS, while also improving the causal interpretation of the results. The procedure for parameter estimation in Quantile G-computation is the same that the one used for WQS, but instead of using a standard regression uses a marginal structural model. Quantile g-computation yields estimates of the effect of increasing all exposures by one quantile, simultaneously.
+
+```{r}
+#Preparing qgcomp call
+list_expo_qgcomp<-colnames(expo2)[-1]
+```
+
+```{r}
+qgcomp_fit <- qgcomp(as.formula(paste("hs_zbmi_who ~ h_cohort + e3_sex_None + e3_yearbir_None +", 
+                                    paste(list_expo_qgcomp, collapse = " + "))), # complete formula including exposures
+                   expnms = list_expo_qgcomp, #list of exposures
+                   data = data, 
+                   family = gaussian(), 
+                   rr = FALSE) #if using binary outcome and rr=TRUE (default), estimates risk ratio rather than odds ratio
+```
+
+We have a look to the the quantile results
+
+```{r}
+summary(qgcomp_fit) 
+```
+
+The mean difference of a quartile increase of the mixture on the outcome is represented by psi1
+
+Now we plot the weights in the mixture analysis.
+
+```{r}
+plot(qgcomp_fit)
+```
+
+The "weights" in `qgcomp` correspond to the proportion of the overall effect when all the exposures have effects in the same direction, but otherwise they correspond to the proportion of the effect *in a particular direction*, which may be small (or large) compared to the overall "mixture" effect. The left and right sides of the plot should not be compared with each other because the length of the bars corresponds to the effect size only relative to other effects in the same direction. The darkness of the bars corresponds to the overall effect size.
+
+-   **Bayesian Kernel Machine Regression (BKMR)**
+
+This method was designed to address, in a flexible non-parametric way, several objectives such as (i) detection and estimation of an effect of the overall mixture, (ii) identification of pollutant or group of pollutants responsible for observed mixture effects, (iii) visualizing the exposure-response function, and (iv) detection of interactions among pollutants within the mixture.
+
+The main idea of BKMR is to model the exposure through means of a kernel function. The kernel function shrinks the estimated health effects of two individuals with similar exposures profiles toward each other.
+
+The estimation is built within an iterative procedure (MCMC), variable importance are provided in terms of posterior inclusion probability (PIP).
+
+The implementation of this technique is relatively straightforward. We need to define an object **containing the mixture** , the **outcome**, and the set of **confounders**. Since we are using an iterative process with a random component, we need to define a **seed**. All continuous variables need to be scaled and categorical with more than 2 levels need to be dichotomous (so a variable with 3 levels will be transformed into 2 variables with 2 levels each).
+
+1.  Define the outcome
+
+```{r}
+outcome <- data$hs_zbmi_who
+```
+
+2.  Define a list of exposures (mixtures)
+
+```{r}
+exposures <- data[,list_expo_qgcomp]
+```
+
+3.  Define a set of covariates to adjust the model
+
+```{r}
+covariates <- data.frame(cohort_1=as.numeric(data$h_cohort=="1"),#cohort 1 is 1, the others are 0
+                    cohort_2=as.numeric(data$h_cohort=="2"),
+                    cohort_3=as.numeric(data$h_cohort=="3"),
+                    cohort_4=as.numeric(data$h_cohort=="4"),
+                    cohort_5=as.numeric(data$h_cohort=="5"),
+                    sex=as.numeric(data$e3_sex_None=="female"), #female is 1, male is 0
+                    year_2003=as.numeric(data$e3_yearbir_None=="2003"),
+                    year_2004=as.numeric(data$e3_yearbir_None=="2004"),
+                    year_2005=as.numeric(data$e3_yearbir_None=="2005"),
+                    year_2006=as.numeric(data$e3_yearbir_None=="2006"),
+                    year_2007=as.numeric(data$e3_yearbir_None=="2007"),
+                    year_2008=as.numeric(data$e3_yearbir_None=="2008"))
+```
+
+The model is defined as follows (please do not run the model: it takes 8 hours to run)
+
+```{r}
+#bkmr_fit <- kmbayes(y=outcome,
+                      #Z=exposures,
+                      #X=covariates,
+                      #iter=20000, #number of iterations
+                      #verbose=TRUE, #text displayed during the processing to show progress
+                      #varsel=TRUE,  #to conduct variable selection
+                     # family='gaussian')
+```
+
+We going to load the fitted object `bkmr_fit.RData` directly from the repository
+
+```{r}
+load(url("https://raw.githubusercontent.com/alldominguez/isee_young_rennes_ws1/main/data/bkmr_fit.RData"))
+```
+
+When using multiple iterations, it is important to evaluate the convergence of the parameters. By looking at the convergence graphs we can verify this (we expect random behavior around the straight line). What we generally observe is an initial "burning" phase, which we should eliminate from the analysis.
+
+```{r}
+TracePlot(fit = bkmr_fit, par = "beta") #no specific shape = ok, it's also common to have a big variation at the beginning
+```
+
+```{r}
+ExtractPIPs(bkmr_fit) #to get the table of posterior inclusion probabilities (= % of iterations where the exposure was included in the model)
+
+```
+
+The overall association of the mixture at different concentration percentiles compared to the 10th percentile and their 95% credible intervals
+
+```{r}
+sel <- seq(10001,20000, by = 5) # process of burning and thinning (taking every fifth draws in the second half of the iterations) to reduce  auto-correlation between chains
+overallrisks_10 <- OverallRiskSummaries(fit=bkmr_fit, 
+                                           qs = seq(0.1, 0.9, by = 0.05), 
+                                           q.fixed = 0.1, 
+                                           sel = sel, 
+                                           method="approx") 
+```
+
+```{r}
+library(ggplot2)
+ggplot(overallrisks_10, aes(quantile, est, 
+                               ymin = est - 1.96*sd, ymax = est + 1.96*sd)) +  
+  geom_hline(yintercept=00, linetype="dashed", color="gray") + 
+  ggtitle("")+ theme_bw()+
+  geom_pointrange(size = 0.9)+ 
+  xlab("Quantiles of exposure to the mixture") +
+  ylab("Difference in BMI z-score")+ 
+  theme(plot.title = element_text(size=12, hjust = 0.5, vjust = 3, face="bold"),
+        axis.title.x = element_text(size=18),
+        axis.title.y = element_text(size=18),
+        axis.text=element_text(size=15),
+        axis.text.x=element_text(size=15),
+        axis.text.y=element_text(size=15))+
+  geom_hline(yintercept=c(0),linewidth = 1)
+```
+
+We can also get estimates when comparing the 75th percentile to the 25th
+
+```{r}
+overallrisks_25 <- OverallRiskSummaries(fit=bkmr_fit, 
+                                     qs = seq(0.1, 0.9, by = 0.05), 
+                                     q.fixed = 0.25, 
+                                     sel = sel, 
+                                     method="approx") 
+```
+
+```{r}
+overallrisks_25 #each percentile compared to 25th percentile
+overallrisks_25[9,2]+1.96*overallrisks_25[9,3] #lower credible interval for median
+overallrisks_25[9,2]-1.96*overallrisks_25[9,3] #upper credible interval for median
+```
+
+Exposure response function of a single exposure when all other exposures are fixed at the median level
+
+```{r}
+univar <- PredictorResponseUnivar(fit = bkmr_fit, 
+                                        ngrid = 50, 
+                                        q.fixed = 0.5, 
+                                        sel = sel, 
+                                        method="approx")
+```
+
+```{r}
+ggplot(univar, aes(z, est, ymin = est - 1.96*se, ymax = est + 1.96*se)) + 
+  geom_smooth(stat = "identity",linewidth = 1.5) + ylab("Difference in BMI z-score") + 
+  facet_wrap(~ variable)+ggtitle("")+
+  xlab("Z-score of log concentrations of chemicals") +
+  geom_hline(yintercept=c(0), linetype="dashed",color = "red")+
+  scale_x_continuous(limits=c(-5,5),breaks = seq(-4, 4, 2))+
+  scale_y_continuous(limits=c(-3,3),breaks = c(-2.5, 0, 2.5))+
+  theme(strip.text = element_text(size = 17),
+        axis.title.x = element_text(size=19),
+        axis.title.y = element_text(size=19),
+        axis.text=element_text(size=12),
+        axis.text.x=element_text(size=15),
+        axis.text.y=element_text(size=15))
+```
+
+Exposure response function of a single exposure where the second exposure is fixed at various quantiles (please do not run the model: it takes 30 minutes to run)
+
+```{r}
+#pred.resp.bivar <- PredictorResponseBivar(fit = bkmr_fit,
+                                         #sel = sel,
+                                         #min.plot.dist = 1)
+```
+
+We going to load the fitted object directly `bkmr_pred.resp.bivar.RData` from the repository
+
+```{r}
+load(url("https://raw.githubusercontent.com/alldominguez/isee_young_rennes_ws1/main/data/bkmr_pred.resp.bivar.RData"))
+```
+
+```{r}
+pred.resp.bivar.levels <- PredictorResponseBivarLevels(pred.resp.bivar,
+                                                     exposures, 
+                                                     qs = c(0.25, 0.5, 0.75))
+```
+
+```{r}
+ggplot(pred.resp.bivar.levels, aes (z1, est)) +
+  geom_smooth(aes(col = quantile), stat = "identity") +
+  facet_grid(variable2 ~ variable1) + 
+  ggtitle("h(exposure 1 | quantiles of exposure 2)") +
+  ylab("Difference in BMI z-score")+
+  xlab("Exposures 1")
+```
+
+Individual effect of a specific exposure (e.g. comparing the 75th to the 25th percentile) when all the others are fixed at a particular percentile (e.g., 25, 50 and 75th percentile)
+
+```{r}
+risks.singvar <- SingVarRiskSummaries(fit = bkmr_fit, 
+                                   sel = sel,
+                                   qs.diff = c(0.25, 0.75),
+                                   q.fixed = c(0.25,0.50,0.75), 
+                                   method = "approx")
+```
+
+```{r}
+ggplot(risks.singvar, aes(variable, est, 
+                          ymin = est-1.96*sd, 
+                          ymax = est +1.96*sd , 
+                          col = q.fixed)) +
+  geom_pointrange(position = position_dodge(width = 0.75)) +
+  coord_flip() +
+  scale_colour_manual(values=c("cyan4", "mediumblue", "#56B4E9")) +
+  geom_hline(yintercept=c(0), linetype="dashed",color = "red")+
+  theme_bw()+
+  xlab("Chemicals") +
+  ylab("Difference in BMI z-score")+ 
+  theme(plot.title = element_text(size=12, hjust = 0.5,vjust=3, face="bold"),
+         axis.title.x = element_text(vjust = -1)) +
+  labs(color = "Quantiles of \n mixture \n exposure")
+```
