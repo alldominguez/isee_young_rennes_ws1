@@ -5,8 +5,8 @@
 
 - Charline Warembourg (charline.warembourg@inserm.fr)
 - Maximilien Genard-Walton (maximilien.genard-walton@inserm.fr)
-- Augusto Anguita (augusto.anguita@isglobal.org)
 - Alan Domínguez (alan.dominguez@isglobal.org)
+- Augusto Anguita (augusto.anguita@isglobal.org)
 
 ## Introduction
 The study of mixtures and the exposome in the context of environmental epidemiological research is rapidly
